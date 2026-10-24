@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crush Valley</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+        :root {
+            --stardew-wood-light: #f3c98b;
+            --stardew-wood-mid: #c77d4c;
+            --stardew-wood-dark: #6e3d20;
+            --stardew-wood-shadow: #3b1e0d;
+            --stardew-border: #8b4e28;
+            --stardew-text-dark: #431f0b;
+            --stardew-red: #d82b48;
+            --stardew-green: #388a34;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            image-rendering: pixelated;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0b0f19;
+            color: var(--stardew-text-dark);
+            font-family: 'VT323', monospace, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        /* OYUN ÇERÇEVESİ */
+        .game-screen {
+            width: 1000px;
+            height: 600px;
+            position: relative;
+            background-color: #bfe5f8;
+            border: 8px solid var(--stardew-wood-dark);
+            border-radius: 10px;
+            box-shadow: 0 0 35px rgba(0,0,0,0.8);
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* SAĞ ÜST DUD (Tarih / Altın) */
+        .hud-clock {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 150px;
+            background: var(--stardew-wood-light);
+            border: 4px solid var(--stardew-wood-dark);
+            border-radius: 6px;
+            padding: 6px 10px;
+            box-shadow: 2px 4px 0px rgba(0,0,0,0.4);
+            font-size: 22px;
+            font-weight: bold;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .hud-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .gold-amount {
+            color: #b56c00;
+            text-shadow: 1px 1px 0 #fff;
+        }
+
+        /* ENERJİ BARI (SAĞ ALT) */
+        .energy-bar-container {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 28px;
+            height: 160px;
+            background: var(--stardew-wood-dark);
+            border: 3px solid var(--stardew-wood-mid);
+            border-radius: 4px;
+            padding: 3px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+
+        .energy-fill {
+            width: 100%;
+            height: 85%;
+            background: linear-gradient(to top, #2e9b27, #66e05f);
+            border-radius: 2px;
+        }
+
+        .energy-badge {
+            position: absolute;
+            top: -22px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #d82b48;
+            color: white;
+            font-size: 18px;
+            padding: 1px 6px;
+            border-radius: 50%;
+            border: 2px solid var(--stardew-wood-dark);
+        }
+
+        /* SOL HIZLI ENVENTAR BARU */
+        .hotbar {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--stardew-wood-light);
+            border: 4px solid var(--stardew-wood-dark);
+            border-radius: 8px;
+            padding: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            box-shadow: 3px 3px 0px rgba(0,0,0,0.4);
+        }
+
+        .slot {
+            width: 44px;
+            height: 44px;
+            background: #e2a868;
+            border: 3px solid var(--stardew-wood-mid);
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .slot.active {
+            border-color: #ff3355;
+            background: #fce1b6;
+            box-shadow: inset 0 0 5px rgba(255,51,85,0.5);
+        }
+
+        .slot-num {
+            position: absolute;
+            top: 1px;
+            left: 3px;
+            font-size: 14px;
+            color: var(--stardew-wood-dark);
+        }
+
+        /* MENÜ / DİYALOG BUTONLARI */
+        .menu-toggle-btn {
+            position: absolute;
+            top: 140px;
+            right: 15px;
+            width: 44px;
+            height: 44px;
+            background: var(--stardew-wood-light);
+            border: 3px solid var(--stardew-wood-dark);
+            border-radius: 6px;
+            font-size: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 2px 3px 0 rgba(0,0,0,0.3);
+        }
+
+        /* STARDEW PENCERE MODALI (Tablar: Çiftçi / Kalp) */
+        .stardew-modal {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .modal-frame {
+            width: 820px;
+            height: 480px;
+            background: var(--stardew-wood-light);
+            border: 6px solid var(--stardew-wood-dark);
+            outline: 4px solid var(--stardew-wood-mid);
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-tabs {
+            position: absolute;
+            top: -42px;
+            left: 20px;
+            display: flex;
+            gap: 6px;
+        }
+
+        .tab-btn {
+            background: #d89b5c;
+            border: 4px solid var(--stardew-wood-dark);
+            border-bottom: none;
+            padding: 6px 16px;
+            border-radius: 8px 8px 0 0;
+            font-size: 22px;
+            font-family: inherit;
+            cursor: pointer;
+            color: var(--stardew-wood-dark);
+        }
+
+        .tab-btn.active {
+            background: var(--stardew-wood-light);
+            padding-top: 10px;
+            top: -4px;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: -20px;
+            right: -20px;
+            width: 40px;
+            height: 40px;
+            background: #d82b48;
+            color: white;
+            border: 4px solid var(--stardew-wood-dark);
+            border-radius: 50%;
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 2px 2px 0 #000;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* KALP (İLİŞKİ) TABI STİLLERİ */
+        .relationship-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .relationship-row {
+            background: #e2a868;
+            border: 3px solid var(--stardew-wood-mid);
+            border-radius: 6px;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .rel-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 200px;
+        }
+
+        .rel-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 6px;
+            border: 2px solid var(--stardew-wood-dark);
+            object-fit: cover;
+        }
+
+        .rel-name-box {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .rel-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--stardew-text-dark);
+        }
+
+        .rel-status {
+            font-size: 16px;
+            color: #7a3e1d;
+        }
+
+        .rel-hearts {
+            display: flex;
+            gap: 4px;
+            font-size: 22px;
+        }
+
+        .rel-actions {
+            display: flex;
+            gap: 15px;
+            font-size: 24px;
+        }
+
+        /* DİYALOG KUTUSU (STARDEW TARZI) */
+        .dialogue-overlay {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 720px;
+            background: var(--stardew-wood-light);
+            border: 5px solid var(--stardew-wood-dark);
+            outline: 3px solid var(--stardew-wood-mid);
+            border-radius: 8px;
+            padding: 15px 20px;
+            display: none;
+            gap: 20px;
+            align-items: center;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.6);
+            z-index: 90;
+        }
+
+        .dialogue-portrait {
+            width: 90px;
+            height: 105px;
+            border: 4px solid var(--stardew-wood-dark);
+            border-radius: 6px;
+            object-fit: cover;
+            background: #222;
+        }
+
+        .dialogue-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .dialogue-speaker {
+            font-size: 26px;
+            font-weight: bold;
+            color: var(--stardew-wood-dark);
+            border-bottom: 2px dashed var(--stardew-wood-mid);
+            padding-bottom: 2px;
+        }
+
+        .dialogue-text {
+            font-size: 22px;
+            color: var(--stardew-text-dark);
+            line-height: 1.2;
+        }
+
+        /* AÇILIŞ MÜZİK JUKEBOX MODALI */
+        .start-modal {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(11, 15, 25, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+        }
+
+        .start-card {
+            background: var(--stardew-wood-light);
+            border: 6px solid var(--stardew-wood-dark);
+            outline: 4px solid var(--stardew-wood-mid);
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            width: 420px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.9);
+        }
+
+        .start-title {
+            font-size: 46px;
+            color: var(--stardew-red);
+            text-shadow: 3px 3px 0 var(--stardew-wood-dark);
+            margin: 0 0 10px 0;
+        }
+
+        .track-opt {
+            background: #e2a868;
+            border: 3px solid var(--stardew-wood-mid);
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        .track-opt:hover, .track-opt.selected {
+            background: #ffb8c6;
+            border-color: var(--stardew-red);
+        }
+
+        .start-btn {
+            margin-top: 15px;
+            background: var(--stardew-wood-mid);
+            color: white;
+            border: 3px solid var(--stardew-wood-dark);
+            padding: 10px 25px;
+            font-size: 24px;
+            font-family: inherit;
+            cursor: pointer;
+            border-radius: 6px;
+            box-shadow: 0 4px 0 var(--stardew-wood-dark);
+        }
+
+        .start-btn:hover {
+            background: var(--stardew-red);
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-screen">
+
+    <!-- AÇILIŞ / JUKEBOX MENÜSÜ -->
+    <div class="start-modal" id="startModal">
+        <div class="start-card">
+            <h1 class="start-title">Crush Valley</h1>
+            <p style="font-size: 20px;">Çalacak Şarkıyı Seçin:</p>
+            <div class="track-opt selected" onclick="selectTrack(0, this)">🎵 Crush!</div>
+            <div class="track-opt" onclick="selectTrack(1, this)">🎵 Benim Olsana</div>
+            <button class="start-btn" onclick="startGame()">OYUNA BAŞLA</button>
+        </div>
+    </div>
+
+    <!-- OYUN KANVASI -->
+    <canvas id="gameCanvas" width="1000" height="600"></canvas>
+
+    <!-- SAĞ ÜST HUD (SAAT / ALTIN) -->
+    <div class="hud-clock">
+        <div class="hud-row">
+            <span>Çar. 17</span>
+            <span>11:40</span>
+        </div>
+        <div class="hud-row">
+            <span>Altın:</span>
+            <span class="gold-amount">11,421g</span>
+        </div>
+    </div>
+
+    <!-- SAĞ MENÜ BUTONU -->
+    <div class="menu-toggle-btn" onclick="openModal('hearts')">❤️</div>
+    <div class="menu-toggle-btn" style="top: 190px;" onclick="openModal('farmer')">🎒</div>
+
+    <!-- SAĞ ALT ENERJİ BARI -->
+    <div class="energy-bar-container">
+        <div class="energy-badge">E</div>
+        <div class="energy-fill"></div>
+    </div>
+
+    <!-- SOL HIZLI ENVENTAR BARU -->
+    <div class="hotbar">
+        <div class="slot active"><span class="slot-num">1</span>🪓</div>
+        <div class="slot"><span class="slot-num">2</span>⛏️</div>
+        <div class="slot"><span class="slot-num">3</span>🧑‍🌾</div>
+        <div class="slot"><span class="slot-num">4</span>💧</div>
+        <div class="slot"><span class="slot-num">5</span>🗡️</div>
+        <div class="slot"><span class="slot-num">6</span>🌾</div>
+    </div>
+
+    <!-- DİYALOG KUTUSU -->
+    <div class="dialogue-overlay" id="dialogueOverlay" onclick="closeDialogue()">
+        <img id="diagPortrait" class="dialogue-portrait" src="" alt="Portre">
+        <div class="dialogue-content">
+            <div class="dialogue-speaker" id="diagSpeaker">İsim</div>
+            <div class="dialogue-text" id="diagText">Diyalog metni buraya gelecek...</div>
+        </div>
+    </div>
+
+    <!-- STARDEW PENCERE MODALI (Tablar) -->
+    <div class="stardew-modal" id="stardewModal">
+        <div class="modal-frame">
+            <div class="close-btn" onclick="closeModal()">X</div>
+            
+            <div class="modal-tabs">
+                <button class="tab-btn" id="tabBtn-farmer" onclick="switchTab('farmer')">🎒 Çiftçi</button>
+                <button class="tab-btn" id="tabBtn-hearts" onclick="switchTab('hearts')">❤️ İlişkiler</button>
+            </div>
+
+            <!-- ÇİFTÇİ TABI (1. Görsele Uygun) -->
+            <div class="tab-content" id="tab-farmer">
+                <div style="display: flex; gap: 20px; align-items: center; margin-bottom: 20px;">
+                    <div style="width: 100px; height: 130px; border: 4px solid var(--stardew-wood-dark); background: #3b82f6; border-radius: 6px; display: flex; justify-content: center; align-items: center; font-size: 50px;">
+                        🧑‍🌾
+                    </div>
+                    <div>
+                        <h2 style="margin: 0; font-size: 32px;">Winry: Seviye 10 Çiftlik Çalışanı</h2>
+                        <p style="font-size: 22px; margin: 5px 0;">Çilek Çiftliği</p>
+                        <p style="font-size: 22px; margin: 5px 0; color: #b56c00;">Sermaye: 11,421g | Toplam Gelir: 43,795g</p>
+                    </div>
+                </div>
+                <div style="background: #e2a868; border: 3px solid var(--stardew-wood-mid); padding: 15px; border-radius: 6px;">
+                    <h3 style="margin-top:0;">Envanter Yuvaları (36 Slot)</h3>
+                    <div style="display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px;">
+                        <div class="slot">🪓</div><div class="slot">⛏️</div><div class="slot">🧑‍🌾</div>
+                        <div class="slot">💧</div><div class="slot">🗡️</div><div class="slot">🌾</div>
+                        <div class="slot">🍇</div><div class="slot">📦</div><div class="slot"></div>
+                        <div class="slot"></div><div class="slot"></div><div class="slot"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- İLİŞKİLER TABI (3. Görsele Uygun) -->
+            <div class="tab-content" id="tab-hearts">
+                <div class="relationship-list" id="relationshipList">
+                    <!-- JS ile dolacak -->
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<!-- ARKA PLAN MÜZİK ÇALAR -->
+<audio id="bgMusic" loop></audio>
+
+<script>
+    // GİTHUB DEPOSUNDAKİ RESİM VE SES DOSYALARI
+    const members = [
+        { name: "Efe", status: "(erkek arkadaş)", src: "a15b12bac93d8fef05363a583a5640be.jpg", hearts: 10, quote: "Selam! Çiftlik işleri kışın zor ama seninle karşılaşmak içimi ısıttı." },
+        { name: "Oğuzhan", status: "(bekâr)", src: "686e53c855e622eebf8dd64717a7ce3d (1).jpg", hearts: 8, quote: "Bugün Stardew Vadisi'nde yeni ritimler üzerinde çalışıyorum." },
+        { name: "Arda", status: "(bekâr)", src: "c3727dcb337b5b956b9a5e56b1e59ca2.jpg", hearts: 7, quote: "Kış manzarası gerçekten büyüleyici, değil mi?" },
+        { name: "Barış", status: "(bekâr)", src: "a6953c2052426997626e300fc363fe35.jpg", hearts: 6, quote: "Crush grubu olarak vadide büyük bir konser hazırlığındayız!" },
+        { name: "Miraç", status: "(bekâr)", src: "b146632a9173361c58bdc623054bf8c2.jpg", hearts: 9, quote: "Sıcak bir kahve alıp karlı yollarda yürümek harika." },
+        { name: "Batu", status: "(bekâr)", src: "IMG_20261022_163354_325.jpg", hearts: 8, quote: "Provadan yeni çıktım, Crush şarkılarını dinledin mi?" },
+        { name: "Milan", status: "(bekâr)", src: "7fe46a1a08c2bfb6064d46ab68d54609.jpg", hearts: 10, quote: "Crush Valley'de seninle zaman geçirmek harika!" }
+    ];
+
+    const tracks = [
+        { title: "Crush!", src: "CRUSH - CRUSH! Resmi Müzik Videosu.mp3" },
+        { title: "Benim Olsana", src: "CRUSH - BENİM OLSANA Resmi Müzik Videosu.mp3" }
+    ];
+
+    let selectedTrackIndex = 0;
+
+    // AÇILIŞ MÜZİK SEÇİMİ
+    function selectTrack(index, element) {
+        selectedTrackIndex = index;
+        document.querySelectorAll('.track-opt').forEach(el => el.classList.remove('selected'));
+        element.classList.add('selected');
+    }
+
+    function startGame() {
+        document.getElementById('startModal').style.display = 'none';
+        const audio = document.getElementById('bgMusic');
+        audio.src = tracks[selectedTrackIndex].src;
+        audio.play().catch(e => console.log("Müzik engellendi:", e));
+        initCanvas();
+    }
+
+    // MODAL PENCERE İŞLEMLERİ
+    function openModal(tabName) {
+        document.getElementById('stardewModal').style.display = 'flex';
+        switchTab(tabName);
+    }
+
+    function closeModal() {
+        document.getElementById('stardewModal').style.display = 'none';
+    }
+
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+        document.getElementById(`tabBtn-${tabName}`).classList.add('active');
+        document.getElementById(`tab-${tabName}`).classList.add('active');
+    }
+
+    // İLİŞKİ LİSTESİNİ DOLDUR (3. Görsel Tasarımı)
+    const relListContainer = document.getElementById('relationshipList');
+    members.forEach(member => {
+        let heartHTML = '';
+        for(let i=0; i<10; i++) {
+            if(i < member.hearts) heartHTML += '❤️';
+            else heartHTML += '🖤';
+        }
+
+        const row = document.createElement('div');
+        row.className = 'relationship-row';
+        row.innerHTML = `
+            <div class="rel-user">
+                <img class="rel-avatar" src="${member.src}" alt="${member.name}">
+                <div class="rel-name-box">
+                    <span class="rel-name">${member.name}</span>
+                    <span class="rel-status">${member.status}</span>
+                </div>
+            </div>
+            <div class="rel-hearts">${heartHTML}</div>
+            <div class="rel-actions">
+                <span title="Hediye Ver" style="cursor:pointer;" onclick="triggerDialogue('${member.name}')">🎁</span>
+                <span title="Konuş" style="cursor:pointer;" onclick="triggerDialogue('${member.name}')">💬</span>
+            </div>
+        `;
+        relListContainer.appendChild(row);
+    });
+
+    // DİYALOG TETİKLEME
+    function triggerDialogue(name) {
+        closeModal();
+        const member = members.find(m => m.name === name);
+        if(member) {
+            document.getElementById('diagPortrait').src = member.src;
+            document.getElementById('diagSpeaker').innerText = member.name;
+            document.getElementById('diagText').innerText = `"${member.quote}"`;
+            document.getElementById('dialogueOverlay').style.display = 'flex';
+        }
+    }
+
+    function closeDialogue() {
+        document.getElementById('dialogueOverlay').style.display = 'none';
+    }
+
+    // STARDEW VALLEY KIŞ HARİTASI (CANVAS ÇİZİMİ)
+    function initCanvas() {
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Oyun Döngüsü Çizimi
+        function render() {
+            // 1. Arka Plan: Kış Kar Kaplaması
+            ctx.fillStyle = "#e0f2fe";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 2. Taş Patika Yol (2. Görsele Uygun)
+            ctx.fillStyle = "#d4a373";
+            ctx.fillRect(200, 180, 600, 50);
+            ctx.fillRect(450, 180, 60, 250);
+
+            // 3. Su Alanı / Göl (Sol Alt)
+            ctx.fillStyle = "#38bdf8";
+            ctx.beginPath();
+            ctx.arc(120, 480, 100, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 4. Kış Ağaçları (Mavi/Karlı)
+            drawTree(ctx, 150, 120);
+            drawTree(ctx, 800, 140);
+            drawTree(ctx, 750, 380);
+
+            // 5. Ahşap Çitler ve Ev
+            ctx.fillStyle = "#8b4e28";
+            ctx.fillRect(400, 50, 160, 100); // Ev
+            ctx.fillStyle = "#bfe5f8";
+            ctx.fillRect(420, 30, 120, 30); // Karlı Çatı
+
+            // 6. Çiftçi Karakter (Winry - Oyuncu)
+            ctx.fillStyle = "#ff6b81";
+            ctx.beginPath();
+            ctx.arc(480, 210, 14, 0, Math.PI * 2);
+            ctx.fill();
+
+            requestAnimationFrame(render);
+        }
+
+        function drawTree(ctx, x, y) {
+            ctx.fillStyle = "#6e3d20";
+            ctx.fillRect(x - 6, y, 12, 30);
+            ctx.fillStyle = "#93c5fd"; // Karlı mavi yapraklar
+            ctx.beginPath();
+            ctx.arc(x, y - 10, 28, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        render();
+    }
+</script>
+
+</body>
+</html>
